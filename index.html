@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Stendhal Formatter</title>
+    <style>
+      body {
+        display: flex;
+        justify-content: center;
+        gap: 16px;
+        padding: 20px;
+        font-family: sans-serif;
+      }
+
+      textarea,
+      input,
+      button {
+        width: 100%;
+        box-sizing: border-box;
+        font-size: 14px;
+        padding: 8px;
+      }
+
+      .column {
+        border: 3px solid black;
+        padding: 10px;
+        width: 30%;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .center-column {
+        width: 10%;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        justify-content: flex-start;
+        align-items: stretch;
+      }
+
+      label {
+        font-weight: bold;
+      }
+
+      #stendhalText {
+        resize: none;
+        height: 100%;
+        min-height: 600px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="column">
+      <label>Обычный текст</label>
+      <textarea id="plainText" rows="30"></textarea>
+    </div>
+
+    <div class="center-column">
+      <label for="title">Тайтл</label>
+      <input id="title" type="text" placeholder="Без названия" />
+      <label for="author">Автор</label>
+      <input id="author" type="text" placeholder="Аноним" />
+      <button id="downloadBtn">💾 Экспорт</button>
+    </div>
+
+    <div class="column">
+      <label>Stendhal формат</label>
+      <textarea id="stendhalText" disabled></textarea>
+    </div>
+
+    <script>
+      const plainText = document.getElementById('plainText')
+      const titleInput = document.getElementById('title')
+      const authorInput = document.getElementById('author')
+      const stendhalText = document.getElementById('stendhalText')
+      const downloadBtn = document.getElementById('downloadBtn')
+
+      function splitTextToPagesPreserveWhitespace(text, maxLen = 256) {
+        const lines = text.replace(/\r\n/g, '\n').split('\n')
+        const pages = []
+        let currentPage = ''
+
+        for (let line of lines) {
+          if (line === '') {
+            line = '\n' // пустая строка = перенос
+          } else {
+            line += '\n' // восстанавливаем перенос строки после непустых строк
+          }
+
+          const currentLines = currentPage.split('\n').length
+          const incomingLines = line.split('\n').length
+          if (
+            (currentPage + line).length <= maxLen &&
+            currentLines + incomingLines - 1 <= 14
+          ) {
+            currentPage += line
+          } else {
+            if (currentPage.trim()) pages.push(currentPage.trimEnd())
+            currentPage = ''
+
+            if (line.length <= maxLen) {
+              currentPage = line
+            } else {
+              // слишком длинная строка — нужно разбить по словам
+              const words = line.trimEnd().split(/(\s+)/) // сохраняем пробелы и табы
+              let subline = ''
+              for (let w of words) {
+                if ((subline + w).length > maxLen) {
+                  pages.push(subline.trimEnd())
+                  subline = w
+                } else {
+                  subline += w
+                }
+              }
+              if (subline.trim()) {
+                currentPage = subline + '\n'
+              }
+            }
+          }
+        }
+
+        if (currentPage.trim()) {
+          pages.push(currentPage.trimEnd())
+        }
+
+        return pages
+      }
+
+      function generateStendhalFormat() {
+        const title = titleInput.value.trim() || 'Без названия'
+        const author = authorInput.value.trim() || 'Аноним'
+        const text = plainText.value
+
+        const pages = splitTextToPagesPreserveWhitespace(text)
+        const formattedPages = pages.map((p) => `#-\n${p}`).join('\n')
+
+        return `title: ${title}\nauthor: ${author}\npages:\n${formattedPages}`
+      }
+
+      function updateOutput() {
+        const formatted = generateStendhalFormat()
+        stendhalText.value = formatted
+      }
+
+      function downloadFile() {
+        const title = titleInput.value.trim() || 'Без названия'
+        const blob = new Blob([generateStendhalFormat()], {
+          type: 'text/plain;charset=utf-8',
+        })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `${title}.stendhal`
+        link.click()
+        URL.revokeObjectURL(url)
+      }
+
+      plainText.addEventListener('input', updateOutput)
+      titleInput.addEventListener('input', updateOutput)
+      authorInput.addEventListener('input', updateOutput)
+      downloadBtn.addEventListener('click', downloadFile)
+
+      // Инициализация
+      updateOutput()
+    </script>
+  </body>
+</html>
