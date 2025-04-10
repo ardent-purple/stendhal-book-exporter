@@ -132,7 +132,7 @@
         const author = authorInput.value.trim() || 'Аноним'
         const text = plainText.value
 
-        const pages = splitTextToPagesPreserveWhitespace(text)
+        const pages = splitTextToPagesPreserveWhitespace(text, 220)
         const formattedPages = pages.map((p) => `#- ${p}`).join('\n')
 
         return `title: ${title}\nauthor: ${author}\npages:\n${formattedPages}`
