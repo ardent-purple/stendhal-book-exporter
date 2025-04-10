@@ -133,7 +133,7 @@
         const text = plainText.value
 
         const pages = splitTextToPagesPreserveWhitespace(text)
-        const formattedPages = pages.map((p) => `#-\n${p}`).join('\n')
+        const formattedPages = pages.map((p) => `#- ${p}`).join('\n')
 
         return `title: ${title}\nauthor: ${author}\npages:\n${formattedPages}`
       }
