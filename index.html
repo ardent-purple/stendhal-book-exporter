@@ -77,7 +77,7 @@
       const downloadBtn = document.getElementById('downloadBtn')
 
       // Функция, которая разбивает один параграф на строки длиной не более maxCharsPerGroup
-      function wrapParagraph(paragraph, maxCharsPerGroup = 28) {
+      function wrapParagraph(paragraph, maxCharsPerGroup = 19) {
         // Разбиваем с сохранением пробелов (каждый токен – слово + последующие пробелы)
         const tokens = paragraph.match(/\S+\s*/g) || []
         let lines = []
@@ -115,7 +115,7 @@
         text,
         maxCharsPage = 256,
         maxGroupsPerPage = 14,
-        maxCharsPerGroup = 28
+        maxCharsPerGroup = 19
       ) {
         // Разбиваем текст на "параграфы" по символу перевода строки
         const rawParagraphs = text.split('\n')
