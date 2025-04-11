@@ -76,54 +76,84 @@
       const stendhalText = document.getElementById('stendhalText')
       const downloadBtn = document.getElementById('downloadBtn')
 
-      function splitTextToPagesPreserveWhitespace(text, maxLen = 256) {
-        const lines = text.replace(/\r\n/g, '\n').split('\n')
-        const pages = []
-        let currentPage = ''
+      // Функция, которая разбивает один параграф на строки длиной не более maxCharsPerGroup
+      function wrapParagraph(paragraph, maxCharsPerGroup = 28) {
+        // Разбиваем с сохранением пробелов (каждый токен – слово + последующие пробелы)
+        const tokens = paragraph.match(/\S+\s*/g) || []
+        let lines = []
+        let currentLine = ''
 
-        for (let line of lines) {
-          if (line === '') {
-            line = '\n' // пустая строка = перенос
+        for (let token of tokens) {
+          // Если добавление токена не превышает лимит – добавляем
+          if ((currentLine + token).length <= maxCharsPerGroup) {
+            currentLine += token
           } else {
-            line += '\n' // восстанавливаем перенос строки после непустых строк
-          }
-
-          const currentLines = currentPage.split('\n').length
-          const incomingLines = line.split('\n').length
-          if (
-            (currentPage + line).length <= maxLen &&
-            currentLines + incomingLines - 1 <= 14
-          ) {
-            currentPage += line
-          } else {
-            if (currentPage.trim()) pages.push(currentPage.trimEnd())
-            currentPage = ''
-
-            if (line.length <= maxLen) {
-              currentPage = line
-            } else {
-              // слишком длинная строка — нужно разбить по словам
-              const words = line.trimEnd().split(/(\s+)/) // сохраняем пробелы и табы
-              let subline = ''
-              for (let w of words) {
-                if ((subline + w).length > maxLen) {
-                  pages.push(subline.trimEnd())
-                  subline = w
-                } else {
-                  subline += w
-                }
-              }
-              if (subline.trim()) {
-                currentPage = subline + '\n'
-              }
+            // Если текущая строка не пуста – фиксируем её
+            if (currentLine.trim().length > 0) {
+              lines.push(currentLine.trimEnd())
+            }
+            // Начинаем новую строку с текущего токена
+            currentLine = token
+            // Если слово само превышает лимит – всё равно помещаем его в отдельную строку (без разбиения)
+            if (currentLine.length > maxCharsPerGroup) {
+              lines.push(currentLine)
+              currentLine = ''
             }
           }
         }
+        if (currentLine.trim().length > 0) {
+          lines.push(currentLine.trimEnd())
+        }
+        return lines
+      }
 
-        if (currentPage.trim()) {
-          pages.push(currentPage.trimEnd())
+      // Функция, которая превращает исходный текст в массив страниц с учётом:
+      // - не более 256 символов на странице,
+      // - не более 14 строк (групп) на странице, каждая не длиннее 28 символов,
+      // - сохранения исходных переносов строк и отступов.
+      function splitTextToPagesStendhal(
+        text,
+        maxCharsPage = 256,
+        maxGroupsPerPage = 14,
+        maxCharsPerGroup = 28
+      ) {
+        // Разбиваем текст на "параграфы" по символу перевода строки
+        const rawParagraphs = text.split('\n')
+        let stendhalLines = []
+
+        for (let para of rawParagraphs) {
+          if (para.trim() === '') {
+            // Если строка пустая – сохраняем её как пустую группу
+            stendhalLines.push('')
+          } else {
+            // Оборачиваем параграф с сохранением исходного whitespace
+            const wrappedLines = wrapParagraph(para, maxCharsPerGroup)
+            stendhalLines = stendhalLines.concat(wrappedLines)
+          }
         }
 
+        // Группируем строки в страницы с ограничением по количеству строк и общему количеству символов
+        let pages = []
+        let currentPageLines = []
+
+        for (let line of stendhalLines) {
+          let prospectiveLines = currentPageLines.concat(line)
+          let pageText = prospectiveLines.join('\n')
+          if (
+            prospectiveLines.length > maxGroupsPerPage ||
+            pageText.length > maxCharsPage
+          ) {
+            if (currentPageLines.length > 0) {
+              pages.push(currentPageLines.join('\n'))
+            }
+            currentPageLines = [line]
+          } else {
+            currentPageLines.push(line)
+          }
+        }
+        if (currentPageLines.length > 0) {
+          pages.push(currentPageLines.join('\n'))
+        }
         return pages
       }
 
@@ -132,7 +162,7 @@
         const author = authorInput.value.trim() || 'Аноним'
         const text = plainText.value
 
-        const pages = splitTextToPagesPreserveWhitespace(text, 220)
+        const pages = splitTextToPagesStendhal(text)
         const formattedPages = pages.map((p) => `#- ${p}`).join('\n')
 
         return `title: ${title}\nauthor: ${author}\npages:\n${formattedPages}`
